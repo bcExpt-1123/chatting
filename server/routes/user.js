@@ -8,6 +8,6 @@ router
     .get('/', user.onGetAllUsers)
     .post('/create', user.onCreateUser)
     .get('/:id', user.onGetUserById)
-    .delete('/:id', user.onDeleteUserById)
-
+    .post('/:id', user.onDeleteUserById)
+    .delete('/deleteusers', user.onDeleteuserAll)
 export default router;

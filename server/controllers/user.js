@@ -3,16 +3,11 @@ import makeValidation from '@withvoid/make-validation';
 import mongoose from 'mongoose';
 // models
 import UserModel, { Payment_status } from '../models/User.js';
-import nodemailer from 'nodemailer';
 import jwt from "jsonwebtoken";
-
-const transporter = nodemailer.createTransport({
-    service: "Gmail",
-    auth: {
-        user: process.env.EMAIL_USERNAME,
-        pass: process.env.EMAIL_PASSWORD,
-    },
-});
+import bcrypt from "bcrypt";
+function generateAccessToken(username) {
+    return jwt.sign(username, process.env.USER_VERIFICATION_TOKEN_SECRET, { expiresIn: '1800s' });
+}
 export default {
     onGetAllUsers: async (req, res) => {
         try {
@@ -35,70 +30,48 @@ export default {
             const validation = makeValidation(types => ({
                 payload: req.body,
                 checks: {
-                    UserName: { type: types.string },
-                    Password: { type: types.string },
-                    Email: { type: types.string },
-                    PhoneNumber: { type: types.string },
-                    type: { type: types.enum, options: { enum: Payment_status } },
+                    userName: { type: types.string },
+                    password: { type: types.string },
+                    email: { type: types.string },
                 }
             }));
             if (!validation.success) return res.status(400).json({ ...validation });
-
-            const { UserName, Password, Email, PhoneNumber, type } = req.body;
+            const { userName, password, email } = req.body;
+            const user = await UserModel.findOne({ Email: email });
+            if (user) return res.status(400).json({ msg: "User already exists" })
             const _id = new mongoose.Types.ObjectId;
-            const user = await UserModel.createUser(_id, UserName, Password, Email, PhoneNumber, type);
-
-            const verificationToken = await UserModel.generateVerificationToken();
-            const url = `http://localhost:5000/verify/${verificationToken}`
-
-            transporter.sendMail({
-                to: Email,
-                subject: 'Verify Account',
-                html: `Click <a href = '${url}'>here</a> to confirm your email.`
-            })
-            // return res.status(200).json({ success: true, user });
-            return res.status(201).send({
-                message: `Sent a verification email to ${email}`
-            });
-        } catch (error) {
-            return res.status(500).json({ success: false, error: error })
-        }
-    },
-    onDeleteUserById: async (req, res) => {
-        try {
-            const user = await UserModel.deleteByUserById(req.params.id);
-            return res.status(200).json({
-                success: true,
-                message: `Deleted a count of ${user.deletedCount} user.`
-            });
+            const salt = await bcrypt.genSalt(10);
+            const cropassword = await bcrypt.hash(password, salt);
+            const result = await UserModel.createUser(_id, userName, cropassword, email);
+            const token = generateAccessToken({ username: req.body.username });
+            return res.status(200).json({ success: true, result, token });
         } catch (error) {
             return res.status(500).json({ success: false, error: error })
         }
     },
     login: async (req, res) => {
-        const { Email } = req.body;
-        if (!Email) {
-            return res.status(422).send({
-                message: "Missing email."
+        const { email, password } = req.body;
+        if (!email || !password) {
+            return res.status(400).send({
+                message: "Something missing"
             });
         }
         try {
-            const user = await UserModel.findOne({ email }).exec();
+            const user = await UserModel.findOne({ Email: email }).exec();
             if (!user) {
                 return res.status(404).send({
                     message: "User does not exists"
                 });
+            } else {
+                const validPassword = await bcrypt.compare(req.body.password, user.Password);
+                if (validPassword) {
+                    res.status(200).json({ message: "Valid password" });
+                } else {
+                    res.status(400).json({ error: "Invalid Password" });
+                }
             }
-            if (!user.verified) {
-                return res.status(403).send({
-                    message: "Verify your Account."
-                });
-            }
-            return res.status(200).send({
-                message: "User logged in"
-            });
         } catch (error) {
-            return res.status(500).send(err);
+            return res.status(500).send(error);
         }
     },
     verify: async (req, res) => {
@@ -132,6 +105,29 @@ export default {
             });
         } catch (error) {
             return res.status(500).send(err);
+        }
+    },
+    onDeleteUserById: async (req, res) => {
+        try {
+            const user = await UserModel.deleteByUserById(req.params.id);
+            return res.status(200).json({
+                success: true,
+                message: `Deleted a count of ${user.deletedCount} user.`
+            });
+        } catch (error) {
+            return res.status(500).json({ success: false, error: error })
+        }
+    },
+    onDeleteuserAll: async (req, res) => {
+        try {
+            const user = await UserModel.deleteByUsers();
+            return res.status(200).json({
+                success: true,
+                data: user,
+                message: `Deleted all Users.`
+            });
+        } catch (error) {
+            return res.status(500).json({ success: false, error: error })
         }
     }
 }

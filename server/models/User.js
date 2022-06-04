@@ -15,20 +15,21 @@ const userSchema = new mongoose.Schema(
             type: String,
             default: () => uuidv4().replace(/\-/g, ""),
         },
-        UserName: String,
-        Password: String,
-        Email: { type: String, unique: true },
+        UserName: {
+            type: String,
+            required: true,
+        },
+        Password: {
+            type: String,
+            required: true,
+        },
+        Email: { type: String, unique: true, required: true },
         PhoneNumber: String,
         LastsubscriptionDate: Date,
         PaymentStatus: String,
         Company_code: String,
         Profile_image: String,
         User_code: String,
-        verified: {
-            type: Boolean,
-            required: true,
-            default: false
-        }
     },
     {
         timestamps: true,
@@ -48,9 +49,11 @@ const userSchema = new mongoose.Schema(
  * @param {String} PaymentStatus
  * @returns {Object} new user object created
  */
-userSchema.statics.createUser = async function (_id, UserName, Password, Email, PhoneNumber, LastsubscriptionDate, Company_code, Profile_image, User_code, PaymentStatus) {
+userSchema.statics.createUser = async function (_id, UserName, password, Email) {
     try {
-        const user = await this.create({ _id, UserName, Password, Email, PhoneNumber, LastsubscriptionDate, Company_code, Profile_image, User_code, PaymentStatus });
+        const PaymentStatus = Payment_status.PAYMENTUSER;
+        const Password = password;
+        const user = await this.create({ _id, UserName, Password, Email, PaymentStatus });
         return user;
     } catch (error) {
         throw error;
@@ -102,7 +105,16 @@ userSchema.statics.getUserByIds = async function (ids) {
  */
 userSchema.statics.deleteByUserById = async function (id) {
     try {
-        const result = await this.remove({ _id: id });
+        const result = await this.deleteOne({ _id: id });
+        return result;
+    } catch (error) {
+        throw error;
+    }
+}
+
+userSchema.statics.deleteByUsers = async function () {
+    try {
+        const result = await this.deleteMany({});
         return result;
     } catch (error) {
         throw error;

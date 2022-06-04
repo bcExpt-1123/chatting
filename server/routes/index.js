@@ -17,6 +17,7 @@ router
     });
 
 router.post('/login', users.login);
+router.post('/signup', users.onCreateUser);
 router.post('/verify', users.verify);
 
 export default router;
