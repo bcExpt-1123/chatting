@@ -18,7 +18,7 @@ import WebSockets from "./utils/WebSockets.js";
 const app = express();
 
 /** Get port from environment and store in Express. */
-const port = process.env.PORT || "80";
+const port = process.env.PORT || "5000";
 app.set("port", port);
 
 app.use(logger("dev"));
