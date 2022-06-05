@@ -108,8 +108,126 @@ export default {
             const result = await ChatMessageModel.markMessageRead(roomId, currentLoggedUser);
             return res.status(200).json({ success: true, data: result });
         } catch (error) {
-            console.log(error);
             return res.status(500).json({ success: false, error });
         }
     },
+    getallchatusers: async (req, res) => {
+        try {
+            const { userId } = req.body;
+            if (!userId) return res.status(400).json({
+                success: false,
+                message: 'No User Id',
+            })
+            const otherusers = await UserModel.find({ _id: { $nin: userId } });
+            console.log(otherusers);
+            let chatmessages = await ChatMessageModel.find({
+                "$or": [{
+                    touserId: userId
+                }, {
+                    fromuserId: userId
+                }]
+            });
+            return res.status(200).json({
+                success: true, otherusers,
+                chatmessages
+            });
+        } catch (error) {
+            return res.status(500).json({ success: false, error });
+        }
+    },
+    unreadmessageusers: async (req, res) => {
+        try {
+            const { userId } = req.body;
+            const otherusers = await UserModel.find({ _id: { $nin: userId } });
+            let chatmessages = await ChatMessageModel.find({
+                "$and": [{
+                    touserId: userId
+                }, {
+                    readcheck: false
+                }]
+            });
+            return res.status(200).json({
+                success: true,
+                otherusers,
+                chatmessages
+            })
+        } catch (error) {
+            return res.status(500).json({ success: false, error });
+        }
+    },
+    readmessageusers: async (req, res) => {
+        try {
+            const { userId } = req.body;
+            const otherusers = await UserModel.find({ _id: { $nin: userId } });
+            let chatmessages = await ChatMessageModel.find({
+                "$and": [{
+                    touserId: userId
+                }, {
+                    readcheck: true
+                }]
+            });
+            return res.status(200).json({
+                success: true,
+                otherusers,
+                chatmessages
+            })
+        } catch (error) {
+            return res.status(500).json({ success: false, error });
+        }
+    },
+    getUserConversation: async (req, res) => {
+        try {
+            const { fromuserId, touserId } = req.body;
+            if (!fromuserId || !touserId) return res.status(400).json({
+                success: false,
+                message: 'Somthing Missing',
+            })
+            const options = {
+                page: parseInt(req.query.page) || 0,
+                limit: parseInt(req.query.limit) || 10,
+            };
+            await ChatMessageModel.updateMany({ fromuserId: touserId },
+                {
+                    $set: {
+                        readcheck: true
+                    }
+                }
+            )
+            const conversation = await ChatMessageModel.getConversationByUserId(fromuserId, touserId, options);
+            return res.status(200).json({
+                success: true,
+                conversation,
+            });
+        } catch (error) {
+            return res.status(500).json({
+                success: false, error
+            })
+        }
+    },
+    newpostMessage: async (req, res) => {
+        try {
+            const validation = makeValidation(types => ({
+                payload: req.body,
+                checks: {
+                    fromuserId: {
+                        type: types.string,
+                    },
+                    touserId: {
+                        type: types.string,
+                    },
+                    messageText: { type: types.string },
+                }
+            }));
+            if (!validation.success) return res.status(400).json({ ...validation });
+            const { fromuserId, touserId, messageText } = req.body;
+            const post = await ChatMessageModel.oncreatesave(fromuserId, touserId, messageText);
+            global.io.sockets.in(touserId).emit('new message', { message: post });
+            return res.status(200).json({ success: true, post });
+        } catch (error) {
+            return res.status(500).json({
+                success: false, error
+
+            })
+        }
+    }
 }

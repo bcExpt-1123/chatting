@@ -27,7 +27,7 @@ export const decode = (req, res, next) => {
     try {
         const decoded = jwt.verify(accessToken, process.env.USER_VERIFICATION_TOKEN_SECRET);
         req.userId = decoded.userId;
-        req.userType = decoded.type;
+        // req.userType = decoded.type;
         return next();
     } catch (error) {
         return res.status(401).json({ success: false, message: error.message });

@@ -29,6 +29,7 @@ const userSchema = new mongoose.Schema(
         PaymentStatus: String,
         Company_code: String,
         Profile_image: String,
+        token: String,
         User_code: String,
     },
     {
@@ -49,11 +50,11 @@ const userSchema = new mongoose.Schema(
  * @param {String} PaymentStatus
  * @returns {Object} new user object created
  */
-userSchema.statics.createUser = async function (_id, UserName, password, Email) {
+userSchema.statics.createUser = async function (_id, UserName, password, Email, token) {
     try {
-        const PaymentStatus = Payment_status.PAYMENTUSER;
+        const PaymentStatus = Payment_status.NONPAYMENTUSER;
         const Password = password;
-        const user = await this.create({ _id, UserName, Password, Email, PaymentStatus });
+        const user = await this.create({ _id, UserName, Password, Email, PaymentStatus, token });
         return user;
     } catch (error) {
         throw error;
@@ -98,6 +99,7 @@ userSchema.statics.getUserByIds = async function (ids) {
         throw error;
     }
 }
+
 
 /**
  * @param {String} id - id of user

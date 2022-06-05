@@ -6,7 +6,7 @@ import UserModel, { Payment_status } from '../models/User.js';
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 function generateAccessToken(username) {
-    return jwt.sign(username, process.env.USER_VERIFICATION_TOKEN_SECRET, { expiresIn: '1800s' });
+    return jwt.sign(username, process.env.USER_VERIFICATION_TOKEN_SECRET);
 }
 export default {
     onGetAllUsers: async (req, res) => {
@@ -42,8 +42,8 @@ export default {
             const _id = new mongoose.Types.ObjectId;
             const salt = await bcrypt.genSalt(10);
             const cropassword = await bcrypt.hash(password, salt);
-            const result = await UserModel.createUser(_id, userName, cropassword, email);
             const token = generateAccessToken({ username: req.body.username });
+            const result = await UserModel.createUser(_id, userName, cropassword, email, token);
             return res.status(200).json({ success: true, result, token });
         } catch (error) {
             return res.status(500).json({ success: false, error: error })
@@ -65,7 +65,7 @@ export default {
             } else {
                 const validPassword = await bcrypt.compare(req.body.password, user.Password);
                 if (validPassword) {
-                    res.status(200).json({ message: "Valid password" });
+                    res.status(200).json({ message: "Valid password", user });
                 } else {
                     res.status(400).json({ error: "Invalid Password" });
                 }

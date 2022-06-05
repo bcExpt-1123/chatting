@@ -6,6 +6,7 @@ import cors from "cors";
 import indexRouter from "./routes/index.js";
 import userRouter from "./routes/user.js";
 import chatRoomRouter from "./routes/chatRoom.js";
+import chatUserRouter from "./routes/chatUser.js";
 import deleteRouter from "./routes/delete.js";
 import passwordResetRouter from "./routes/passwordReset.js";
 import { Server } from "socket.io";
@@ -29,7 +30,7 @@ app.use("/passwordreset", passwordResetRouter);
 app.use("/users", userRouter);
 app.use("/room", decode, chatRoomRouter);
 app.use("/delete", deleteRouter);
-
+app.use("/chat", decode, chatUserRouter);
 /** catch 404 and forward to error handler */
 app.use('*', (req, res) => {
     return res.status(404).json({
@@ -41,6 +42,7 @@ app.use('*', (req, res) => {
 /** Create HTTP server. */
 const server = http.createServer(app);
 const io = new Server(server);
+global.io = io;
 io.on('connection', WebSockets.connection)
 
 /** Listen on provided port, on all network interfaces. */

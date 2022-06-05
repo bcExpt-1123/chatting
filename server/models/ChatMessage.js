@@ -25,13 +25,17 @@ const chatMessageSchema = new mongoose.Schema(
             type: String,
             default: () => uuidv4().replace(/\-/g, ""),
         },
-        chatRoomId: String,
+        fromuserId: String,
+        touserId: String,
         message: mongoose.Schema.Types.Mixed,
         type: {
             type: String,
             default: () => MESSAGE_TYPES.TYPE_TEXT,
         },
-        postedByUser: String,
+        readcheck: {
+            type: Boolean,
+            default: false,
+        },
         readByRecipients: [readByRecipientSchema],
     },
     {
@@ -115,6 +119,37 @@ chatMessageSchema.statics.createPostInChatRoom = async function (chatRoomId, mes
 }
 
 /**
+ *  create meesage room id
+ */
+chatMessageSchema.statics.oncreatesave = async function (fromuserId, touserId, messageText) {
+    try {
+        const post = await this.create({
+            fromuserId,
+            touserId,
+            message: messageText,
+            readByRecipients: { readByUserId: fromuserId }
+        });
+        const aggregate = await this.aggregate([
+            // get post where _id = post._id
+            { $match: { _id: post._id } },
+            // do a join on another table called users, and 
+            // get me a user whose _id = postedByUser
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'fromuserId',
+                    foreignField: '_id',
+                    as: 'fromuserId',
+                }
+            },
+            { $unwind: '$fromuserId' },
+        ]);
+        return post;
+    } catch (error) {
+
+    }
+}
+/**
  * @param {String} chatRoomId - chat room id
  */
 chatMessageSchema.statics.getConversationByRoomId = async function (chatRoomId, options = {}) {
@@ -133,6 +168,35 @@ chatMessageSchema.statics.getConversationByRoomId = async function (chatRoomId, 
                 }
             },
             { $unwind: "$postedByUser" },
+            // apply pagination
+            { $skip: options.page * options.limit },
+            { $limit: options.limit },
+            { $sort: { createdAt: 1 } },
+        ]);
+    } catch (error) {
+        throw error;
+    }
+}
+/**
+ * @param {String} chatRoomId - userId
+ */
+chatMessageSchema.statics.getConversationByUserId = async function (fromuserId, touserId, options = {}) {
+    try {
+
+        return this.aggregate([
+            { $match: { $or: [{ fromuserId: fromuserId }, { fromuserId: touserId }] } },
+            { $sort: { createdAt: -1 } },
+            // do a join on another table called users, and 
+            // get me a user whose _id = postedByUser
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'fromuserId',
+                    foreignField: '_id',
+                    as: 'fromuserId',
+                }
+            },
+            { $unwind: "$fromuserId" },
             // apply pagination
             { $skip: options.page * options.limit },
             { $limit: options.limit },
