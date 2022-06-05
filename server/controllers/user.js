@@ -30,20 +30,20 @@ export default {
             const validation = makeValidation(types => ({
                 payload: req.body,
                 checks: {
-                    userName: { type: types.string },
+                    username: { type: types.string },
                     password: { type: types.string },
                     email: { type: types.string },
                 }
             }));
             if (!validation.success) return res.status(400).json({ ...validation });
-            const { userName, password, email } = req.body;
+            const { username, password, email } = req.body;
             const user = await UserModel.findOne({ Email: email });
             if (user) return res.status(400).json({ msg: "User already exists" })
             const _id = new mongoose.Types.ObjectId;
             const salt = await bcrypt.genSalt(10);
             const cropassword = await bcrypt.hash(password, salt);
             const token = generateAccessToken({ username: req.body.username });
-            const result = await UserModel.createUser(_id, userName, cropassword, email, token);
+            const result = await UserModel.createUser(_id, username, cropassword, email, token);
             return res.status(200).json({ success: true, result, token });
         } catch (error) {
             return res.status(500).json({ success: false, error: error })
