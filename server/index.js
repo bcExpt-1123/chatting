@@ -7,6 +7,7 @@ import indexRouter from "./routes/index.js";
 import userRouter from "./routes/user.js";
 import chatRoomRouter from "./routes/chatRoom.js";
 import chatUserRouter from "./routes/chatUser.js";
+import translateRouter from "./routes/translate.js";
 import deleteRouter from "./routes/delete.js";
 import passwordResetRouter from "./routes/passwordReset.js";
 import { Server } from "socket.io";
@@ -15,8 +16,8 @@ import { decode } from './middlewares/jwt.js'
 import "./config/mongo.js";
 import WebSockets from "./utils/WebSockets.js";
 
-const app = express();
 
+const app = express();
 /** Get port from environment and store in Express. */
 const port = process.env.PORT || "5000";
 app.set("port", port);
@@ -31,6 +32,8 @@ app.use("/users", userRouter);
 app.use("/room", decode, chatRoomRouter);
 app.use("/delete", deleteRouter);
 app.use("/chat", decode, chatUserRouter);
+app.use("/translate", decode, translateRouter);
+
 /** catch 404 and forward to error handler */
 app.use('*', (req, res) => {
     return res.status(404).json({
