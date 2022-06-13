@@ -2,11 +2,11 @@ import express from 'express';
 import { createRequire } from "module";
 import { v2 } from '@google-cloud/translate';
 const require = createRequire(import.meta.url); // construct the require method
-const googleCloudTranslation = require("../config/myuserprojectjsonkey.json")
+const googleCloudTranslation = require("../config/chatapp.json")
 const { Translate } = v2;
 
 const translate = new Translate({
-    projectId: 'next-office-work',
+    projectId: 'chatapp-353209',
     credentials: googleCloudTranslation
 });
 
