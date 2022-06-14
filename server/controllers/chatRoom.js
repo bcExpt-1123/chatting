@@ -193,7 +193,7 @@ export default {
                     }
                 }
             )
-            const conversation = await ChatMessageModel.getConversationByUserId(fromuserId, touserId, options);
+            const conversation = await ChatMessageModel.getConversationByUserId(fromuserId, touserId);
             return res.status(200).json({
                 success: true,
                 conversation,

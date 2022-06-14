@@ -180,7 +180,7 @@ chatMessageSchema.statics.getConversationByRoomId = async function (chatRoomId, 
 /**
  * @param {String} chatRoomId - userId
  */
-chatMessageSchema.statics.getConversationByUserId = async function (fromuserId, touserId, options = {}) {
+chatMessageSchema.statics.getConversationByUserId = async function (fromuserId, touserId) {
     try {
 
         return this.aggregate([
@@ -198,8 +198,6 @@ chatMessageSchema.statics.getConversationByUserId = async function (fromuserId, 
             },
             { $unwind: "$fromuserId" },
             // apply pagination
-            { $skip: options.page * options.limit },
-            { $limit: options.limit },
             { $sort: { createdAt: 1 } },
         ]);
     } catch (error) {
