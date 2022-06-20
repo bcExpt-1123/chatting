@@ -9,8 +9,9 @@ import chatRoomRouter from "./routes/chatRoom.js";
 import chatUserRouter from "./routes/chatUser.js";
 import translateRouter from "./routes/translate.js";
 import deleteRouter from "./routes/delete.js";
+import { createRequire } from "module";
 import passwordResetRouter from "./routes/passwordReset.js";
-import { Server } from "socket.io";
+
 // middlewares
 import { decode } from './middlewares/jwt.js'
 import "./config/mongo.js";
@@ -44,7 +45,11 @@ app.use('*', (req, res) => {
 
 /** Create HTTP server. */
 const server = http.createServer(app);
+const require = createRequire(import.meta.url); // construct the require method
+const { Server } = require("socket.io");
 const io = new Server(server);
+
+
 global.io = io;
 io.on('connection', WebSockets.connection)
 

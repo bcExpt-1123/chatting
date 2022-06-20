@@ -194,6 +194,7 @@ export default {
                 }
             )
             const conversation = await ChatMessageModel.getConversationByUserId(fromuserId, touserId);
+            global.io.sockets.in(touserId).emit('join', { message: conversation });
             return res.status(200).json({
                 success: true,
                 conversation,
