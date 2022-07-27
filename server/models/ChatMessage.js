@@ -18,6 +18,16 @@ const readByRecipientSchema = new mongoose.Schema(
         timestamps: false,
     }
 );
+const emocions = new mongoose.Schema(
+    {
+        _id: false,
+        userId: String,
+        icon: String
+    },
+    {
+        timestamps: false,
+    }
+);
 
 const chatMessageSchema = new mongoose.Schema(
     {
@@ -36,6 +46,12 @@ const chatMessageSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
+        emoticons: [
+            {
+                userId: String,
+                icon: String
+            }
+        ],
         readByRecipients: [readByRecipientSchema],
     },
     {
@@ -149,6 +165,7 @@ chatMessageSchema.statics.oncreatesave = async function (fromuserId, touserId, m
 
     }
 }
+
 /**
  * @param {String} chatRoomId - chat room id
  */

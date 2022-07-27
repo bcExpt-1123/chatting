@@ -16,9 +16,21 @@ import passwordResetRouter from "./routes/passwordReset.js";
 import { decode } from './middlewares/jwt.js'
 import "./config/mongo.js";
 import WebSockets from "./utils/WebSockets.js";
-
+import fileUpload from 'express-fileupload';
+import bodyParser from 'body-parser';
+import morgan from 'morgan';
 
 const app = express();
+// enable files upload
+app.use(fileUpload({
+    createParentPath: true
+}));
+
+//add other middleware
+app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(morgan('dev'));
 /** Get port from environment and store in Express. */
 const port = process.env.PORT || "5000";
 app.set("port", port);
@@ -34,6 +46,7 @@ app.use("/room", decode, chatRoomRouter);
 app.use("/delete", deleteRouter);
 app.use("/chat", decode, chatUserRouter);
 app.use("/translate", decode, translateRouter);
+
 
 /** catch 404 and forward to error handler */
 app.use('*', (req, res) => {

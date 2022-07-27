@@ -2,8 +2,12 @@
 import makeValidation from '@withvoid/make-validation';
 // models
 import ChatRoomModel, { CHAT_ROOM_TYPES } from '../models/ChatRoom.js';
-import ChatMessageModel from '../models/ChatMessage.js';
+import chatMessageSchema from '../models/ChatMessage.js';
+import UploadSchemaModel from '../models/upload.js';
+import ReplySchemaModal from '../models/replymessage.js';
 import UserModel from '../models/User.js';
+import appRoot from 'app-root-path';
+import Emoticon from '../models/emoticon_model.js'
 
 export default {
     initiate: async (req, res) => {
@@ -44,7 +48,7 @@ export default {
                 messageText: req.body.messageText,
             };
             const currentLoggedUser = req.userId;
-            const post = await ChatMessageModel.createPostInChatRoom(roomId, messagePayload, currentLoggedUser);
+            const post = await chatMessageSchema.createPostInChatRoom(roomId, messagePayload, currentLoggedUser);
             global.io.sockets.in(roomId).emit('new message', { message: post });
             return res.status(200).json({ success: true, post });
         } catch (error) {
@@ -60,7 +64,7 @@ export default {
             };
             const rooms = await ChatRoomModel.getChatRoomsByUserId(currentLoggedUser);
             const roomIds = rooms.map(room => room._id);
-            const recentConversation = await ChatMessageModel.getRecentConversation(
+            const recentConversation = await chatMessageSchema.getRecentConversation(
                 roomIds, options, currentLoggedUser
             );
             return res.status(200).json({ success: true, conversation: recentConversation });
@@ -83,7 +87,7 @@ export default {
                 page: parseInt(req.query.page) || 0,
                 limit: parseInt(req.query.limit) || 10,
             };
-            const conversation = await ChatMessageModel.getConversationByRoomId(roomId, options);
+            const conversation = await chatMessageSchema.getConversationByRoomId(roomId, options);
             return res.status(200).json({
                 success: true,
                 conversation,
@@ -105,7 +109,7 @@ export default {
             }
 
             const currentLoggedUser = req.userId;
-            const result = await ChatMessageModel.markMessageRead(roomId, currentLoggedUser);
+            const result = await chatMessageSchema.markMessageRead(roomId, currentLoggedUser);
             return res.status(200).json({ success: true, data: result });
         } catch (error) {
             return res.status(500).json({ success: false, error });
@@ -120,7 +124,7 @@ export default {
             })
             const otherusers = await UserModel.find({ _id: { $nin: userId } });
             console.log(otherusers);
-            let chatmessages = await ChatMessageModel.find({
+            let chatmessages = await chatMessageSchema.find({
                 "$or": [{
                     touserId: userId
                 }, {
@@ -139,7 +143,7 @@ export default {
         try {
             const { userId } = req.body;
             const otherusers = await UserModel.find({ _id: { $nin: userId } });
-            let chatmessages = await ChatMessageModel.find({
+            let chatmessages = await chatMessageSchema.find({
                 "$and": [{
                     touserId: userId
                 }, {
@@ -159,7 +163,7 @@ export default {
         try {
             const { userId } = req.body;
             const otherusers = await UserModel.find({ _id: { $nin: userId } });
-            let chatmessages = await ChatMessageModel.find({
+            let chatmessages = await chatMessageSchema.find({
                 "$and": [{
                     touserId: userId
                 }, {
@@ -186,14 +190,14 @@ export default {
                 page: parseInt(req.query.page) || 0,
                 limit: parseInt(req.query.limit) || 10,
             };
-            await ChatMessageModel.updateMany({ fromuserId: touserId },
+            await chatMessageSchema.updateMany({ fromuserId: touserId },
                 {
                     $set: {
                         readcheck: true
                     }
                 }
             )
-            const conversation = await ChatMessageModel.getConversationByUserId(fromuserId, touserId);
+            const conversation = await chatMessageSchema.getConversationByUserId(fromuserId, touserId);
             global.io.sockets.in(touserId).emit('join', { message: conversation });
             return res.status(200).json({
                 success: true,
@@ -221,14 +225,104 @@ export default {
             }));
             if (!validation.success) return res.status(400).json({ ...validation });
             const { fromuserId, touserId, messageText } = req.body;
-            const post = await ChatMessageModel.oncreatesave(fromuserId, touserId, messageText);
+            const post = await chatMessageSchema.oncreatesave(fromuserId, touserId, messageText);
             global.io.sockets.in(touserId).emit('new message', { message: post });
             return res.status(200).json({ success: true, post });
         } catch (error) {
             return res.status(500).json({
                 success: false, error
-
             })
+        }
+    },
+    uploadfiles: async (req, res) => {
+        try {
+            if (!req.files) {
+                res.send({
+                    status: false,
+                    message: 'No file uploaded'
+                });
+            } else {
+                //Use the name of the input field (i.e. "avatar") to retrieve the uploaded file
+                let file = req.files.file;
+                //Use the mv() method to place the file in upload directory (i.e. "uploads")
+                file.mv(`${appRoot}/uploads/` + file.name);
+                //send response
+                let { user_id } = req.body;
+                const post = await UploadSchemaModel.oncreatesave(file.name, file.mimetype, user_id);
+                res.status(200).send({
+                    status: true,
+                    message: 'File is uploaded',
+                    data: post
+                });
+            }
+        } catch (err) {
+            res.status(500).send(err);
+        }
+    },
+    replaymessage: async (req, res) => {
+        try {
+            const { meesage_text, reply_message, touserId, fromuserId } = req.body;
+            let chatmessages = await chatMessageSchema.findOne({
+                message: meesage_text
+            });
+            const post = await ReplySchemaModal.oncreatesave(reply_message, meesage_text, chatmessages.id, touserId, fromuserId);
+            global.io.sockets.in(touserId).emit('reply message', { message: post });
+            res.send({
+                success: true,
+                data: post
+            })
+        } catch (error) {
+            res.status(500).send(error)
+        }
+    },
+    emoticons: async (req, res) => {
+        try {
+            const { messageId, icon, userId } = req.body;
+            Emoticon.oncreatesave(userId, messageId, icon)
+                .then(function (emoticon) {
+                    chatMessageSchema.findById(emoticon.messageId)
+                        .then(async function (message) {
+                            console.log(message);
+                            let emoticons = message.emoticons;
+                            const emoteObj = { userId: emoticon.userId, icon: emoticon.icon };
+                            if (emoticons === undefined) {
+                                message.emoticons = [emoteObj];
+                            } else {
+                                emoticons.push(emoteObj);
+                                message.emoticons = emoticons;
+                            }
+                            console.log(message.emoticons);
+                            let emoticons_ = {};
+                            emoticons_.userId = emoticons[0].userId;
+                            emoticons_.icon = emoticons[0].icon;
+                            console.log(emoticons_);
+                            let result = await chatMessageSchema.updateOne({ _id: emoticon.messageId }, {
+                                emoticons: {
+                                    userId: emoticons_.user_id,
+                                    icon: emoticons_.icon,
+                                }
+                            });
+                            res.status(200).send({ success: true })
+                        }, function (err) {
+                            res.status(500).send(err)
+                        });
+                }, function (err) {
+                    res.status(500).send(err)
+                });
+        } catch (error) {
+            res.status(500).send(error)
+        }
+    },
+    getemoticons: async (req, res) => {
+        try {
+            Emoticon.find({})
+                .then(function (emoticons) {
+                    res.json(emoticons);
+                }, function (err) {
+                    next(err);
+                });
+        } catch (error) {
+            res.status(500).send(error)
         }
     }
 }
